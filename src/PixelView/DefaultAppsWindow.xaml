@@ -1,0 +1,98 @@
+<Window x:Class="PixelView.DefaultAppsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="默认打开方式 · PixelView" Width="620" Height="590" MinWidth="480" MinHeight="415"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" UseLayoutRounding="True"
+        FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="13" Background="#151922" Foreground="#EBF0F6">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Muted" Color="#A7B3C8"/>
+        <SolidColorBrush x:Key="Accent" Color="#8DE5CE"/>
+        <Style x:Key="Action" TargetType="Button">
+            <Setter Property="Foreground" Value="#EAF0F9"/>
+            <Setter Property="Background" Value="#293448"/>
+            <Setter Property="Padding" Value="13,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonFrame" Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}" BorderThickness="1" BorderBrush="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonFrame" Property="BorderBrush" Value="#8DE5CE"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonFrame" Property="BorderBrush" Value="#8DE5CE"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonFrame" Property="Opacity" Value="0.42"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel x:Name="Filters">
+            <TextBlock Text="默认打开方式" FontSize="23" FontWeight="SemiBold"/>
+            <TextBlock Text="勾选图片格式，再到 Windows 设置中为当前账户确认。"
+                       Foreground="{StaticResource Muted}" Margin="0,5,0,16" TextWrapping="Wrap"/>
+            <TextBlock Text="筛选扩展名（例如 png）" Foreground="{StaticResource Muted}" Margin="0,0,0,4"/>
+            <TextBox x:Name="Search" Background="#222B3B" Foreground="#EAF0F9" BorderBrush="#566785" Padding="9,6"
+                     CaretBrush="#EAF0F9" AutomationProperties.Name="筛选扩展名"/>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
+                <Button Content="勾选常用格式" Style="{StaticResource Action}" Click="SelectCommon"/>
+                <Button Content="全选当前结果" Style="{StaticResource Action}" Click="SelectVisible" Margin="8,0,0,0"/>
+                <Button Content="取消勾选结果" Style="{StaticResource Action}" Click="ClearVisible" Margin="8,0,0,0"/>
+            </StackPanel>
+        </StackPanel>
+        <Border Grid.Row="1" BorderThickness="1" BorderBrush="#364051" CornerRadius="7" Background="#1B2230">
+            <ListBox x:Name="Formats" Background="Transparent" Foreground="#EBF0F6" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="图片格式">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Focusable" Value="False"/>
+                        <Setter Property="Template">
+                            <Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderBrush="#2C3749" BorderThickness="0,0,0,1" Padding="12,8">
+                            <DockPanel>
+                                <TextBlock Text="{Binding Status}" DockPanel.Dock="Right" Foreground="{StaticResource Accent}"
+                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Content="{Binding Extension}" Foreground="#EBF0F6" VerticalContentAlignment="Center"
+                                          FontFamily="Consolas, Microsoft YaHei UI" Padding="7,0,0,0"/>
+                            </DockPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Margin="0,0,14,0">
+                <TextBlock x:Name="SelectionInfo" FontWeight="SemiBold"/>
+                <TextBlock x:Name="Message" Text="已确认的默认设置在重启后仍然有效。" Foreground="{StaticResource Muted}"
+                           TextWrapping="Wrap" Margin="0,3,0,0"/>
+            </StackPanel>
+            <Button x:Name="Apply" Grid.Column="1" Style="{StaticResource Action}" Content="设为默认打开方式"
+                    Background="#29473F" Foreground="{StaticResource Accent}" FontWeight="SemiBold"
+                    VerticalAlignment="Center" Padding="16,10" Click="ApplyClick"/>
+        </Grid>
+    </Grid>
+</Window>
