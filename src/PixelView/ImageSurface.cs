@@ -8,10 +8,10 @@ public sealed class ImageSurface : FrameworkElement
 {
     private Brush backdrop = new SolidColorBrush(Color.FromRgb(21, 25, 34));
     private static readonly Brush Checker = CreateChecker();
+    private Brush transparencyBackdrop = Checker;
     private BitmapSource? bitmap;
     private Vector offset;
     private bool fit = true;
-    private bool checker = true;
 
     public double Zoom { get; private set; } = 1;
     public bool HasImage => bitmap != null;
@@ -32,7 +32,7 @@ public sealed class ImageSurface : FrameworkElement
         };
     }
 
-    public void Configure(string background, bool showChecker, bool nearest)
+    public void Configure(string background, bool showChecker, bool nearest, string? transparencyBackground = null)
     {
         backdrop = background switch
         {
@@ -41,7 +41,15 @@ public sealed class ImageSurface : FrameworkElement
             "纯白" => Brushes.White,
             _ => new SolidColorBrush(Color.FromRgb(21, 25, 34))
         };
-        checker = showChecker;
+        transparencyBackdrop = transparencyBackground switch
+        {
+            "白色" => Brushes.White,
+            "黑色" => Brushes.Black,
+            "灰色" => Brushes.Gray,
+            "棋盘格" => Checker,
+            "跟随画布" => backdrop,
+            _ => showChecker ? Checker : backdrop
+        };
         RenderOptions.SetBitmapScalingMode(this, nearest ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
         InvalidateVisual();
     }
@@ -142,7 +150,7 @@ public sealed class ImageSurface : FrameworkElement
         double x = Math.Round((ActualWidth / 2 + offset.X) * dpi.DpiScaleX - w / 2) / dpi.DpiScaleX;
         double y = Math.Round((ActualHeight / 2 + offset.Y) * dpi.DpiScaleY - h / 2) / dpi.DpiScaleY;
         var destination = new Rect(x, y, Math.Max(1, Math.Round(w)) / dpi.DpiScaleX, Math.Max(1, Math.Round(h)) / dpi.DpiScaleY);
-        if (checker) dc.DrawRectangle(Checker, null, destination);
+        dc.DrawRectangle(transparencyBackdrop, null, destination);
         dc.DrawImage(bitmap, destination);
     }
 

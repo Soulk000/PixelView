@@ -16,6 +16,7 @@ internal sealed class WindowPreferences
     public bool Toolbar { get; set; } = true;
     public bool Status { get; set; } = true;
     public bool Checker { get; set; } = true;
+    public string? TransparencyBackground { get; set; }
     public bool Nearest { get; set; } = true;
     public bool IntegerSteps { get; set; }
     public bool KeepZoom { get; set; }

@@ -411,7 +411,7 @@ public partial class MainWindow : Window
         LockGlyph.Text = prefs.Locked ? "\uE72E" : "\uE785";
         LockText.Text = prefs.Locked ? "窗口已固定" : "固定窗口";
         LockButton.Foreground = (Brush)FindResource(prefs.Locked ? "Accent" : "Muted");
-        Surface.Configure(prefs.Background, prefs.Checker, prefs.Nearest);
+        Surface.Configure(prefs.Background, prefs.Checker, prefs.Nearest, prefs.TransparencyBackground);
         if (prefs.KeepZoom) Surface.HoldView();
         ViewLockGlyph.Text = prefs.KeepZoom ? "\uE72E" : "\uE785";
         ViewLockText.Text = prefs.KeepZoom ? "视图已固定" : "固定视图";
@@ -495,9 +495,23 @@ public partial class MainWindow : Window
         var background = new MenuItem { Header = "画布背景" };
         foreach (string color in new[] { "深灰", "纯黑", "中灰", "纯白" })
             background.Items.Add(Check(color, prefs.Background == color, _ => prefs.Background = color));
-        background.Items.Add(new Separator());
-        background.Items.Add(Check("透明区域显示棋盘格", prefs.Checker, value => prefs.Checker = value));
         menu.Items.Add(background);
+        var transparency = new MenuItem { Header = "透明背景" };
+        string selectedBackground = prefs.TransparencyBackground ?? (prefs.Checker ? "棋盘格" : "跟随画布");
+        foreach (string color in new[] { "棋盘格", "白色", "黑色", "灰色", "跟随画布" })
+        {
+            var option = new MenuItem { Header = color, IsCheckable = true, IsChecked = selectedBackground == color };
+            option.Click += (_, _) =>
+            {
+                prefs.TransparencyBackground = color;
+                prefs.Checker = color == "棋盘格";
+                foreach (MenuItem sibling in transparency.Items) sibling.IsChecked = sibling == option;
+                ApplyPreferences();
+                prefs.Save();
+            };
+            transparency.Items.Add(option);
+        }
+        menu.Items.Add(transparency);
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(fullscreen ? "退出全屏" : "全屏", ToggleFullscreen, "F11"));
         menu.Items.Add(Check("固定窗口位置和大小", prefs.Locked, value => prefs.Locked = value, "Ctrl+L"));
