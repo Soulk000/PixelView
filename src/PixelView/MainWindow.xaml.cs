@@ -53,7 +53,9 @@ public partial class MainWindow : Window
         {
             var source = HwndSource.FromHwnd(Handle);
             source.AddHook(WindowMessage);
+            NativeWindow.EnableSmallResizing(source.Handle);
             NativeWindow.UseDarkCaption(source.Handle);
+            UpdateMinimumSize();
         };
         Loaded += async (_, _) =>
         {
@@ -70,7 +72,13 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(initialPath)) await OpenPath(initialPath);
         };
         LocationChanged += (_, _) => RememberNormalBounds();
-        SizeChanged += (_, _) => RememberNormalBounds();
+        SizeChanged += (_, _) =>
+        {
+            UpdateMinimumSize();
+            UpdateWorkspaceLayout();
+            RememberNormalBounds();
+        };
+        LayoutRoot.SizeChanged += (_, _) => UpdateWorkspaceLayout();
         StateChanged += (_, _) => RememberNormalBounds();
         Closing += (_, _) =>
         {
@@ -398,8 +406,6 @@ public partial class MainWindow : Window
     private void ApplyPreferences()
     {
         Topmost = fullscreen || prefs.Topmost;
-        Toolbar.Visibility = !fullscreen && prefs.Toolbar ? Visibility.Visible : Visibility.Collapsed;
-        Status.Visibility = !fullscreen && prefs.Status ? Visibility.Visible : Visibility.Collapsed;
         WindowStyle = fullscreen || prefs.Borderless ? WindowStyle.None : WindowStyle.SingleBorderWindow;
         ResizeMode = fullscreen ? ResizeMode.NoResize : ResizeMode.CanResize;
         bool useCustomChrome = !fullscreen && prefs.Borderless;
@@ -417,7 +423,29 @@ public partial class MainWindow : Window
         ViewLockText.Text = prefs.KeepZoom ? "视图已固定" : "固定视图";
         ViewLockButton.Foreground = (Brush)FindResource(prefs.KeepZoom ? "Accent" : "Muted");
         ViewLockButton.Background = prefs.KeepZoom ? new SolidColorBrush(Color.FromRgb(41, 71, 63)) : Brushes.Transparent;
+        UpdateMinimumSize();
+        UpdateWorkspaceLayout();
         UpdateInfo();
+    }
+
+    private void UpdateMinimumSize()
+    {
+        if (Handle != 0 && NativeWindow.MinimumSize(Handle) is { } minimum)
+        {
+            MinWidth = minimum.Width;
+            MinHeight = minimum.Height;
+        }
+    }
+
+    private void UpdateWorkspaceLayout()
+    {
+        // Hide chrome that cannot fit, keeping the saved visibility choices intact.
+        bool toolbar = !fullscreen && prefs.Toolbar && LayoutRoot.ActualWidth >= 660;
+        bool status = !fullscreen && prefs.Status && LayoutRoot.ActualWidth >= 320;
+        double requestedHeight = (toolbar ? 52 : 0) + (status ? 36 : 0);
+        bool hasRoom = LayoutRoot.ActualHeight >= requestedHeight + 1 / VisualTreeHelper.GetDpi(this).DpiScaleY;
+        Toolbar.Visibility = toolbar && hasRoom ? Visibility.Visible : Visibility.Collapsed;
+        Status.Visibility = status && hasRoom ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ToggleFullscreen()
@@ -558,7 +586,7 @@ public partial class MainWindow : Window
 
     private void ChooseSize()
     {
-        var input = new TextBox { Text = $"{(int)ActualWidth} × {(int)ActualHeight}", Margin = new Thickness(0, 8, 0, 12), Padding = new Thickness(6) };
+        var input = new TextBox { Text = $"{Math.Ceiling(ActualWidth):0} × {Math.Ceiling(ActualHeight):0}", Margin = new Thickness(0, 8, 0, 12), Padding = new Thickness(6) };
         var prompt = new TextBlock { Text = "输入宽 × 高（逻辑像素）" };
         var button = new Button { Content = "应用", IsDefault = true, MinWidth = 70, Padding = new Thickness(12, 4, 12, 4), HorizontalAlignment = HorizontalAlignment.Right };
         var layout = new StackPanel { Margin = new Thickness(18) };
@@ -578,7 +606,7 @@ public partial class MainWindow : Window
             if (parts.Length != 2 || !int.TryParse(parts[0], out int requestedWidth) || !int.TryParse(parts[1], out int requestedHeight) ||
                 requestedWidth < MinWidth || requestedHeight < MinHeight || requestedWidth > 8000 || requestedHeight > 8000)
             {
-                prompt.Text = $"宽度 {MinWidth:0}–8000，高度 {MinHeight:0}–8000";
+                prompt.Text = $"宽度 {Math.Ceiling(MinWidth):0}–8000，高度 {Math.Ceiling(MinHeight):0}–8000";
                 return;
             }
             width = requestedWidth;
