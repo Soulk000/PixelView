@@ -12,23 +12,46 @@ public sealed class ImageSurface : FrameworkElement
     private BitmapSource? bitmap;
     private Vector offset;
     private bool fit = true;
+    private bool fitWhenReady;
 
     public double Zoom { get; private set; } = 1;
     public bool HasImage => bitmap != null;
     public int PixelWidth => bitmap?.PixelWidth ?? 0;
     public int PixelHeight => bitmap?.PixelHeight ?? 0;
+    internal Rect ImageBounds
+    {
+        get
+        {
+            if (bitmap == null) return Rect.Empty;
+            DpiScale dpi = VisualTreeHelper.GetDpi(this);
+            double w = bitmap.PixelWidth * Zoom;
+            double h = bitmap.PixelHeight * Zoom;
+            double x = Math.Round((ActualWidth / 2 + offset.X) * dpi.DpiScaleX - w / 2) / dpi.DpiScaleX;
+            double y = Math.Round((ActualHeight / 2 + offset.Y) * dpi.DpiScaleY - h / 2) / dpi.DpiScaleY;
+            return new Rect(x, y, Math.Max(1, Math.Round(w)) / dpi.DpiScaleX, Math.Max(1, Math.Round(h)) / dpi.DpiScaleY);
+        }
+    }
     public event Action? ZoomChanged;
 
     public ImageSurface()
     {
         ClipToBounds = true;
         Configure("深灰", true, true);
-        SizeChanged += (_, _) =>
+        SizeChanged += (_, e) =>
         {
-            if (fit && bitmap != null)
+            if (fitWhenReady && ActualWidth > 0 && ActualHeight > 0)
                 Fit();
             else
+            {
+                if (bitmap != null)
+                {
+                    // Changing the viewport must not move or rescale its contents.
+                    offset += new Vector((e.PreviousSize.Width - e.NewSize.Width) / 2,
+                                         (e.PreviousSize.Height - e.NewSize.Height) / 2);
+                    fit = false;
+                }
                 InvalidateVisual();
+            }
         };
     }
 
@@ -69,7 +92,7 @@ public sealed class ImageSurface : FrameworkElement
 
     public void HoldView()
     {
-        if (bitmap != null) fit = false;
+        if (bitmap != null) { fit = false; fitWhenReady = false; }
     }
 
     public void SetFrame(BitmapSource source)
@@ -85,6 +108,8 @@ public sealed class ImageSurface : FrameworkElement
     public void Fit()
     {
         if (bitmap == null) return;
+        fitWhenReady = ActualWidth <= 0 || ActualHeight <= 0;
+        if (fitWhenReady) return;
         DpiScale dpi = VisualTreeHelper.GetDpi(this);
         double fitX = ActualWidth * dpi.DpiScaleX / bitmap.PixelWidth;
         double fitY = ActualHeight * dpi.DpiScaleY / bitmap.PixelHeight;
@@ -97,6 +122,7 @@ public sealed class ImageSurface : FrameworkElement
     public void Actual()
     {
         if (bitmap == null) return;
+        fitWhenReady = false;
         fit = false;
         offset = default;
         Zoom = 1;
@@ -106,6 +132,7 @@ public sealed class ImageSurface : FrameworkElement
     public void ZoomAt(double multiplier, Point anchor, bool integerSteps)
     {
         if (bitmap == null || multiplier == 1) return;
+        fitWhenReady = false;
         double next = Math.Clamp(Zoom * multiplier, Math.Min(Zoom, 0.001), 128);
         if (integerSteps)
         {
@@ -127,8 +154,22 @@ public sealed class ImageSurface : FrameworkElement
     public void Pan(Vector delta)
     {
         if (bitmap == null) return;
+        fitWhenReady = false;
         fit = false;
         offset += delta;
+        InvalidateVisual();
+    }
+
+    internal void KeepImagePosition(Point point)
+    {
+        if (bitmap == null) return;
+        DpiScale dpi = VisualTreeHelper.GetDpi(this);
+        Vector next = point + new Vector(bitmap.PixelWidth * Zoom / dpi.DpiScaleX / 2,
+                                         bitmap.PixelHeight * Zoom / dpi.DpiScaleY / 2)
+                      - new Point(ActualWidth / 2, ActualHeight / 2);
+        if ((next - offset).LengthSquared < 0.0000000001) return;
+        offset = next;
+        fit = false;
         InvalidateVisual();
     }
 
@@ -144,12 +185,7 @@ public sealed class ImageSurface : FrameworkElement
         dc.DrawRectangle(backdrop, null, new Rect(RenderSize));
         if (bitmap == null) return;
 
-        DpiScale dpi = VisualTreeHelper.GetDpi(this);
-        double w = bitmap.PixelWidth * Zoom;
-        double h = bitmap.PixelHeight * Zoom;
-        double x = Math.Round((ActualWidth / 2 + offset.X) * dpi.DpiScaleX - w / 2) / dpi.DpiScaleX;
-        double y = Math.Round((ActualHeight / 2 + offset.Y) * dpi.DpiScaleY - h / 2) / dpi.DpiScaleY;
-        var destination = new Rect(x, y, Math.Max(1, Math.Round(w)) / dpi.DpiScaleX, Math.Max(1, Math.Round(h)) / dpi.DpiScaleY);
+        var destination = ImageBounds;
         dc.DrawRectangle(transparencyBackdrop, null, destination);
         dc.DrawImage(bitmap, destination);
     }

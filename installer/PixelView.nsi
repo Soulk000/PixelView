@@ -1,13 +1,13 @@
 ﻿Unicode true
 !include "MUI2.nsh"
 !ifndef APP_VERSION
-  !define APP_VERSION "1.2.2"
+  !define APP_VERSION "1.2.3"
 !endif
 !ifndef FILE_VERSION
-  !define FILE_VERSION "1.2.2.0"
+  !define FILE_VERSION "1.2.3.0"
 !endif
 !ifndef PACKAGE_VERSION
-  !define PACKAGE_VERSION "1.2.2"
+  !define PACKAGE_VERSION "1.2.3"
 !endif
 !ifndef PUBLISH_DIR
   !define PUBLISH_DIR "..\artifacts\publish"

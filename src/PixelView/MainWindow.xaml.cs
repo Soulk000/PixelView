@@ -37,6 +37,8 @@ public partial class MainWindow : Window
     private WindowRect? beforeFull;
     private WindowState beforeFullState;
     private int wheelRemainder;
+    private Point? resizeImagePosition;
+    private bool resizingWindow;
 
     public MainWindow() : this(null) { }
 
@@ -71,7 +73,7 @@ public partial class MainWindow : Window
             Surface.Focus();
             if (!string.IsNullOrWhiteSpace(initialPath)) await OpenPath(initialPath);
         };
-        LocationChanged += (_, _) => RememberNormalBounds();
+        LocationChanged += (_, _) => { PreserveResizeImagePosition(); RememberNormalBounds(); };
         SizeChanged += (_, _) =>
         {
             UpdateMinimumSize();
@@ -79,6 +81,7 @@ public partial class MainWindow : Window
             RememberNormalBounds();
         };
         LayoutRoot.SizeChanged += (_, _) => UpdateWorkspaceLayout();
+        Surface.LayoutUpdated += (_, _) => PreserveResizeImagePosition();
         StateChanged += (_, _) => RememberNormalBounds();
         Closing += (_, _) =>
         {
@@ -486,12 +489,36 @@ public partial class MainWindow : Window
 
     private nint WindowMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
+        if (message == 0x231) // WM_ENTERSIZEMOVE also covers moving; wait for WM_SIZING.
+            resizeImagePosition = Surface.HasImage ? Surface.PointToScreen(Surface.ImageBounds.TopLeft) : null;
+        else if (message == 0x214 && !prefs.Locked && !fullscreen) // WM_SIZING
+        {
+            resizeImagePosition ??= Surface.HasImage ? Surface.PointToScreen(Surface.ImageBounds.TopLeft) : null;
+            resizingWindow = true;
+            Surface.HoldView();
+        }
+        else if (message == 0x232) // WM_EXITSIZEMOVE
+        {
+            if (resizingWindow)
+            {
+                UpdateLayout();
+                PreserveResizeImagePosition();
+            }
+            resizingWindow = false;
+            resizeImagePosition = null;
+        }
         const int systemCommand = 0x112;
         int command = (int)wParam & 0xFFF0;
         if (message == systemCommand && (prefs.Locked || fullscreen) && !changingMode &&
             (command is 0xF000 or 0xF010 or 0xF030 || command == 0xF120 && WindowState == WindowState.Maximized))
             handled = true;
         return 0;
+    }
+
+    private void PreserveResizeImagePosition()
+    {
+        if (resizingWindow && resizeImagePosition is { } position && Surface.HasImage)
+            Surface.KeepImagePosition(Surface.PointFromScreen(position));
     }
 
     private void MoveFromToolbar(object sender, MouseButtonEventArgs e)
